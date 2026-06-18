@@ -1,0 +1,367 @@
+{
+  "info": {
+    "name": "Wingstop - Summary History Transaction",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_TOKEN_HERE"
+    }
+  ],
+  "item": [
+    {
+      "name": "History Order Summary - 7 Hari Terakhir",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/order/history-order-summary?ordertype=delivery&period=7days&page=1&limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "order",
+            "history-order-summary"
+          ],
+          "query": [
+            {
+              "key": "ordertype",
+              "value": "delivery",
+              "description": "Options: delivery, takeAway, dineIn"
+            },
+            {
+              "key": "period",
+              "value": "7days",
+              "description": "Options: 7days, 1month, 3months"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order/history-order-summary?ordertype=delivery&period=7days&page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order",
+                "history-order-summary"
+              ],
+              "query": [
+                {
+                  "key": "ordertype",
+                  "value": "delivery"
+                },
+                {
+                  "key": "period",
+                  "value": "7days"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"status\": 200,\n  \"message\": \"Success Get History Order Summary\",\n  \"result\": {\n    \"items\": [\n      {\n        \"PaymentTransactionID\": \"TRX-202606170001\",\n        \"OrderNo\": \"WS202606170001\",\n        \"ExternalID\": \"ESB202606170001\",\n        \"OrderDate\": \"2026-06-17T10:25:00Z\",\n        \"OrderAmount\": \"85000.00\",\n        \"AssignStatus\": \"SUCCESS\",\n        \"StoreShortDesc\": \"WINGSTOP KEMANG\",\n        \"OrderStatus\": 3\n      }\n    ],\n    \"pagination\": {\n      \"page\": 1,\n      \"limit\": 10,\n      \"totalItems\": 28,\n      \"totalPages\": 3,\n      \"hasNext\": true,\n      \"hasPrev\": false\n    },\n    \"period\": \"7days\"\n  }\n}"
+        },
+        {
+          "name": "Success - Empty Data",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"status\": 200,\n  \"message\": \"Success Get History Order Summary\",\n  \"result\": {\n    \"items\": [],\n    \"pagination\": {\n      \"page\": 1,\n      \"limit\": 10,\n      \"totalItems\": 0,\n      \"totalPages\": 0,\n      \"hasNext\": false,\n      \"hasPrev\": false\n    },\n    \"period\": \"7days\"\n  }\n}"
+        },
+        {
+          "name": "Error - Invalid Period",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": false,\n  \"status\": 400,\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"period must be one of: 7days, 1month, 3months\"\n  }\n}"
+        },
+        {
+          "name": "Error - Invalid Page",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": false,\n  \"status\": 400,\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"page must be a positive integer\"\n  }\n}"
+        },
+        {
+          "name": "Error - Invalid Limit",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": false,\n  \"status\": 400,\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"limit must be a positive integer\"\n  }\n}"
+        },
+        {
+          "name": "Error - Missing Order Type",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": false,\n  \"status\": 400,\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Missing order type\"\n  }\n}"
+        },
+        {
+          "name": "Error - Unauthorized",
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": false,\n  \"status\": 401,\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"Authorization header is required\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "History Order Summary - 1 Bulan Terakhir",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/order/history-order-summary?ordertype=delivery&period=1month&page=1&limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "order",
+            "history-order-summary"
+          ],
+          "query": [
+            {
+              "key": "ordertype",
+              "value": "delivery",
+              "description": "Options: delivery, takeAway, dineIn"
+            },
+            {
+              "key": "period",
+              "value": "1month",
+              "description": "Options: 7days, 1month, 3months"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "History Order Summary - 3 Bulan Terakhir",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/order/history-order-summary?ordertype=delivery&period=3months&page=1&limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "order",
+            "history-order-summary"
+          ],
+          "query": [
+            {
+              "key": "ordertype",
+              "value": "delivery",
+              "description": "Options: delivery, takeAway, dineIn"
+            },
+            {
+              "key": "period",
+              "value": "3months",
+              "description": "Options: 7days, 1month, 3months"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "History Order Summary - Dine In",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/order/history-order-summary?ordertype=dineIn&period=7days&page=1&limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "order",
+            "history-order-summary"
+          ],
+          "query": [
+            {
+              "key": "ordertype",
+              "value": "dineIn",
+              "description": "Options: delivery, takeAway, dineIn"
+            },
+            {
+              "key": "period",
+              "value": "7days",
+              "description": "Options: 7days, 1month, 3months"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "History Order Summary - Take Away",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/order/history-order-summary?ordertype=takeAway&period=7days&page=1&limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "order",
+            "history-order-summary"
+          ],
+          "query": [
+            {
+              "key": "ordertype",
+              "value": "takeAway",
+              "description": "Options: delivery, takeAway, dineIn"
+            },
+            {
+              "key": "period",
+              "value": "7days",
+              "description": "Options: 7days, 1month, 3months"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
