@@ -6,6 +6,7 @@ import { useSetlists } from '../../features/setlists/hooks/useSetlists'
 import { createGameEngine, type GameSnapshot } from '../../features/game/engine/gameEngine'
 import { appendHistory } from '../../features/game/storage/historyStorage'
 import { useAudioSettings } from '../../app/providers/useAudioSettings'
+import { MusicIcon, SfxIcon } from '../../lib/icons'
 import correctSfx from '../../assets/sound/correct.mp3'
 import gameStartSfx from '../../assets/sound/game_start.mp3'
 import gameOverSfx from '../../assets/sound/game_over.mp3'
@@ -38,6 +39,8 @@ export function GamePage() {
   const engineRef = useRef<ReturnType<typeof createGameEngine> | null>(null)
   const didSaveRef = useRef(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const lastSeenAtRef = useRef(new Map<string, number>())
+  const missCountRef = useRef(new Map<string, number>())
   const startAudioRef = useRef<HTMLAudioElement | null>(null)
   const musicAudioRef = useRef<HTMLAudioElement | null>(null)
   const correctAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -59,6 +62,7 @@ export function GamePage() {
     missed: 0,
     correct: 0,
     mostFailed: null,
+    boundaryX: 32,
   }))
   const [input, setInput] = useState('')
   const [isPaused, setIsPaused] = useState(false)
@@ -75,12 +79,41 @@ export function GamePage() {
   }, [])
 
   const applyInputValue = useCallback((nextValue: string) => {
-    setInput(nextValue)
-    const matched = engineRef.current?.tryMatch(nextValue) ?? false
+    const sanitized = nextValue.replace(/^\s+/, '')
+    setInput(sanitized)
+    const matched = engineRef.current?.tryMatch(sanitized) ?? false
     if (matched) {
       setInput('')
     }
   }, [])
+
+  const pickNextWord = useCallback(() => {
+    if (wordPool.length === 0) return null
+    const now = Date.now()
+    const weights: Array<{ cumulative: number; index: number; key: string }> = []
+    let total = 0
+
+    for (let i = 0; i < wordPool.length; i++) {
+      const item = wordPool[i]
+      const key = `${item.hanzi}__${item.pinyinNormalized}`
+      const lastSeenAt = lastSeenAtRef.current.get(key) ?? 0
+      const timeSinceLastSeen = lastSeenAt > 0 ? now - lastSeenAt : 60_000
+      const missCount = missCountRef.current.get(key) ?? 0
+
+      const freshnessBoost = Math.min(3, timeSinceLastSeen / 7000)
+      const missBoost = Math.min(8, missCount * 1.2)
+      const weight = 1 + freshnessBoost + missBoost
+
+      total += weight
+      weights.push({ cumulative: total, index: i, key })
+    }
+
+    const r = Math.random() * total
+    const picked = weights.find((w) => w.cumulative >= r) ?? weights[weights.length - 1]
+    const item = wordPool[picked.index]
+    lastSeenAtRef.current.set(picked.key, now)
+    return item
+  }, [wordPool])
 
   const startLoopMusic = useCallback(() => {
     if (!musicEnabledRef.current) return
@@ -175,13 +208,15 @@ export function GamePage() {
     }
 
     const engine = createGameEngine({
-      getNextWord: () => wordPool[Math.floor(Math.random() * wordPool.length)] ?? null,
+      getNextWord: () => pickNextWord(),
       onSnapshot: setSnapshot,
-      onMatch: () => {
+      onMatch: (_entities) => {
         if (!sfxEnabledRef.current) return
         playAudio(correctAudioRef.current)
       },
-      onMiss: () => {
+      onMiss: (entity) => {
+        const key = `${entity.hanzi}__${entity.pinyin}`
+        missCountRef.current.set(key, (missCountRef.current.get(key) ?? 0) + 1)
         if (!sfxEnabledRef.current) return
         playAudio(wrongAudioRef.current)
       },
@@ -202,7 +237,7 @@ export function GamePage() {
       stopAudio(startAudioRef.current)
       stopAudio(musicAudioRef.current)
     }
-  }, [navigate, playGameStartSequence, selectedSetlistIds.length, wordPool])
+  }, [navigate, pickNextWord, playGameStartSequence, selectedSetlistIds.length])
 
   useEffect(() => {
     if (!snapshot.isGameOver) return
@@ -319,39 +354,53 @@ export function GamePage() {
       <section className="game-arena panel" aria-label="Game arena">
         <div className="game-audio-controls" aria-label="In-game audio controls">
           <Button
-            variant={musicEnabled ? 'primary' : 'ghost'}
+            variant="ghost"
             type="button"
             onClick={() => setMusicEnabled((current) => !current)}
             aria-pressed={musicEnabled}
+            aria-label={`Music ${musicEnabled ? 'on' : 'off'}`}
+            title={`Music ${musicEnabled ? 'on' : 'off'}`}
+            className={`game-audio-button ${musicEnabled ? 'is-on' : 'is-off'}`}
           >
-            Music {musicEnabled ? 'On' : 'Off'}
+            <span className="game-audio-button__icon" aria-hidden="true">
+              <MusicIcon />
+            </span>
           </Button>
           <Button
-            variant={sfxEnabled ? 'primary' : 'ghost'}
+            variant="ghost"
             type="button"
             onClick={() => setSfxEnabled((current) => !current)}
             aria-pressed={sfxEnabled}
+            aria-label={`SFX ${sfxEnabled ? 'on' : 'off'}`}
+            title={`SFX ${sfxEnabled ? 'on' : 'off'}`}
+            className={`game-audio-button ${sfxEnabled ? 'is-on' : 'is-off'}`}
           >
-            SFX {sfxEnabled ? 'On' : 'Off'}
+            <span className="game-audio-button__icon" aria-hidden="true">
+              <SfxIcon />
+            </span>
           </Button>
         </div>
         <div className="game-boundary" aria-hidden="true" />
-        {snapshot.items.map((it) => (
-          <div
-            key={it.id}
-            className={`game-entity ${
-              it.status === 'matched'
-                ? 'is-matched'
-                : it.status === 'missed'
-                  ? 'is-missed'
-                  : ''
-            }`}
-            style={{ transform: `translate(${it.x}px, ${it.y}px)` }}
-            aria-label={`${it.hanzi} ${it.pinyin}`}
-          >
-            <div className="game-entity__hanzi">{it.hanzi}</div>
-          </div>
-        ))}
+        {snapshot.items.map((it) => {
+          return (
+            <div
+              key={it.id}
+              className={`game-entity ${
+                it.status === 'matched'
+                  ? 'is-matched'
+                  : it.status === 'missed'
+                    ? 'is-missed'
+                    : ''
+              }`}
+              style={{ transform: `translate(${it.x}px, ${it.y}px)` }}
+              aria-label={`${it.hanzi} ${it.pinyin}`}
+            >
+              <div className="game-entity__hanzi">
+                {it.status === 'matched' ? it.pinyinDisplay : it.hanzi}
+              </div>
+            </div>
+          )
+        })}
       </section>
 
       <section className="panel stack">

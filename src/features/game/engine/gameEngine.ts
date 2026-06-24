@@ -33,12 +33,13 @@ export type GameSnapshot = {
   missed: number
   correct: number
   mostFailed: FailedEntry | null
+  boundaryX: number
 }
 
 type EngineConfig = {
   getNextWord: () => SetlistItem | null
   onSnapshot: (s: GameSnapshot) => void
-  onMatch?: (entity: GameEntity) => void
+  onMatch?: (entities: GameEntity[]) => void
   onMiss?: (entity: GameEntity) => void
   onGameOver?: (s: GameSnapshot) => void
 }
@@ -86,6 +87,7 @@ export function createGameEngine({
     missed: 0,
     correct: 0,
     mostFailed: null,
+    boundaryX,
   }
 
   function emit() {
@@ -266,6 +268,7 @@ export function createGameEngine({
       missed: 0,
       correct: 0,
       mostFailed: null,
+      boundaryX,
     }
     emit()
     start()
@@ -276,25 +279,37 @@ export function createGameEngine({
     const input = normalizePinyin(raw)
     if (!input) return false
 
-    let bestIdx = -1
-    let bestX = Number.POSITIVE_INFINITY
-
-    for (let i = 0; i < snapshot.items.length; i++) {
-      const it = snapshot.items[i]
+    const groups = new Map<string, GameEntity[]>()
+    for (const it of snapshot.items) {
       if (it.status !== 'active') continue
       if (it.pinyin !== input) continue
-      if (it.x < bestX) {
-        bestX = it.x
-        bestIdx = i
+      const existing = groups.get(it.hanzi)
+      if (existing) existing.push(it)
+      else groups.set(it.hanzi, [it])
+    }
+
+    if (groups.size === 0) return false
+
+    let bestHanzi = ''
+    let bestMinX = Number.POSITIVE_INFINITY
+    for (const [hanzi, items] of groups) {
+      let minX = Number.POSITIVE_INFINITY
+      for (const it of items) {
+        if (it.x < minX) minX = it.x
+      }
+      if (minX < bestMinX) {
+        bestMinX = minX
+        bestHanzi = hanzi
       }
     }
 
-    if (bestIdx === -1) return false
+    const matchedGroup = groups.get(bestHanzi) ?? []
+    if (matchedGroup.length === 0) return false
 
     const now = Date.now()
-    const matchedEntity = snapshot.items[bestIdx]
-    const nextItems = snapshot.items.map((it, i) =>
-      i === bestIdx
+    const matchedIds = new Set(matchedGroup.map((it) => it.id))
+    const nextItems = snapshot.items.map((it) =>
+      matchedIds.has(it.id)
         ? {
             ...it,
             status: 'matched' as const,
@@ -302,13 +317,15 @@ export function createGameEngine({
           }
         : it,
     )
+
+    const groupSize = matchedGroup.length
     snapshot = {
       ...snapshot,
       items: nextItems,
-      score: snapshot.score + 1,
-      correct: snapshot.correct + 1,
+      score: snapshot.score + groupSize,
+      correct: snapshot.correct + groupSize,
     }
-    onMatch?.(matchedEntity)
+    onMatch?.(matchedGroup)
     emit()
     return true
   }

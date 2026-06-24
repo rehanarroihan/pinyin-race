@@ -28,11 +28,52 @@
 
 .game-audio-controls {
   position: absolute;
-  top: 16px;
+  bottom: 16px;
   right: 16px;
   z-index: 2;
   display: flex;
   gap: 8px;
+}
+
+.game-audio-button {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, white 92%, var(--panel));
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: rgba(0, 0, 0, 0.18) 0 10px 20px -12px;
+  position: relative;
+}
+
+.game-audio-button__icon {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.game-audio-button__icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.game-audio-button.is-off {
+  color: color-mix(in srgb, var(--muted) 70%, var(--text));
+}
+
+.game-audio-button.is-off::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 62%;
+  background: var(--danger);
+  border-radius: 999px;
+  transform: rotate(45deg);
+  box-shadow: rgba(0, 0, 0, 0.18) 0 4px 10px -6px;
 }
 
 .game-boundary {
@@ -69,6 +110,19 @@
   font-size: 28px;
   font-weight: 400;
   letter-spacing: -0.6px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-entity.is-matched .game-entity__hanzi {
+  font-size: 13px;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
 }
 
 .game-entity.is-matched {

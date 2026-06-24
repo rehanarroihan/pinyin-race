@@ -97,9 +97,16 @@ export function SetlistEditorPage() {
                     minHeight: 148,
                   }}
                 >
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: 22, fontWeight: 400 }}>{r.hanzi}</div>
-                    <div className="muted" style={{ fontFamily: 'var(--font-mono)' }}>
+                  <div
+                    style={{ textAlign: 'left', userSelect: 'text', cursor: 'text' }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ fontSize: 22, fontWeight: 400, userSelect: 'text' }}>{r.hanzi}</div>
+                    <div
+                      className="muted"
+                      style={{ fontFamily: 'var(--font-mono)', userSelect: 'text' }}
+                    >
                       {r.pinyin}
                     </div>
                   </div>
@@ -134,8 +141,8 @@ export function SetlistEditorPage() {
               background: 'color-mix(in srgb, var(--panel) 80%, transparent)',
             }}
           >
-            <div style={{ fontSize: 22, fontWeight: 650 }}>{it.hanzi}</div>
-            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>
+            <div style={{ fontSize: 22, fontWeight: 650, userSelect: 'text' }}>{it.hanzi}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)', userSelect: 'text' }}>
               {it.pinyin}
             </div>
             <div className="muted">{it.english}</div>
