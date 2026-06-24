@@ -33,6 +33,7 @@ export type GameSnapshot = {
   missed: number
   correct: number
   mostFailed: FailedEntry | null
+  missedBreakdown: FailedEntry[]
   boundaryX: number
 }
 
@@ -87,6 +88,7 @@ export function createGameEngine({
     missed: 0,
     correct: 0,
     mostFailed: null,
+    missedBreakdown: [],
     boundaryX,
   }
 
@@ -172,6 +174,7 @@ export function createGameEngine({
       let hearts = snapshot.hearts
       let missed = snapshot.missed
       let mostFailed = snapshot.mostFailed
+      let missedBreakdown = snapshot.missedBreakdown
 
       for (const it of moved) {
         if (it.status === 'matched' || it.status === 'missed') {
@@ -187,6 +190,7 @@ export function createGameEngine({
           hearts = Math.max(0, hearts - 1)
           missed += 1
           mostFailed = !mostFailed || failed.count >= mostFailed.count ? failed : mostFailed
+          missedBreakdown = Array.from(missCounts.values()).sort((a, b) => b.count - a.count)
           survivors.push({
             ...it,
             x: boundaryX - entityWidth,
@@ -199,7 +203,7 @@ export function createGameEngine({
       }
 
       const isGameOver = hearts === 0
-      snapshot = { ...snapshot, items: survivors, hearts, missed, isGameOver, mostFailed }
+      snapshot = { ...snapshot, items: survivors, hearts, missed, isGameOver, mostFailed, missedBreakdown }
 
       if (isGameOver) {
         running = false
@@ -268,6 +272,7 @@ export function createGameEngine({
       missed: 0,
       correct: 0,
       mostFailed: null,
+      missedBreakdown: [],
       boundaryX,
     }
     emit()

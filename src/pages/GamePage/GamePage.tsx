@@ -62,6 +62,7 @@ export function GamePage() {
     missed: 0,
     correct: 0,
     mostFailed: null,
+    missedBreakdown: [],
     boundaryX: 32,
   }))
   const [input, setInput] = useState('')
@@ -210,7 +211,8 @@ export function GamePage() {
     const engine = createGameEngine({
       getNextWord: () => pickNextWord(),
       onSnapshot: setSnapshot,
-      onMatch: (_entities) => {
+      onMatch: (entities) => {
+        if (entities.length === 0) return
         if (!sfxEnabledRef.current) return
         playAudio(correctAudioRef.current)
       },
@@ -221,6 +223,8 @@ export function GamePage() {
         playAudio(wrongAudioRef.current)
       },
       onGameOver: () => {
+        isPausedRef.current = false
+        setIsPaused(false)
         stopAudio(startAudioRef.current)
         stopAudio(musicAudioRef.current)
         if (!sfxEnabledRef.current) return
@@ -242,7 +246,6 @@ export function GamePage() {
   useEffect(() => {
     if (!snapshot.isGameOver) return
     inputRef.current?.blur()
-    setIsPaused(false)
     stopAudio(startAudioRef.current)
     stopAudio(musicAudioRef.current)
   }, [snapshot.isGameOver])
@@ -474,15 +477,20 @@ export function GamePage() {
               <div className="game-dialog__score">{snapshot.score}</div>
               <div className="muted">Correct: {snapshot.correct} · Missed: {snapshot.missed}</div>
               <div className="game-dialog__failed panel">
-                <div style={{ fontWeight: 650 }}>Most failed</div>
-                {snapshot.mostFailed ? (
-                  <>
-                    <div className="game-dialog__failed-hanzi">{snapshot.mostFailed.hanzi}</div>
-                    <div className="muted" style={{ fontFamily: 'var(--font-mono)' }}>
-                      {snapshot.mostFailed.pinyin}
-                    </div>
-                    <div className="muted">{snapshot.mostFailed.count}x missed</div>
-                  </>
+                <div style={{ fontWeight: 650 }}>Missed</div>
+                {snapshot.missedBreakdown.length > 0 ? (
+                  <div className="game-dialog__failed-grid">
+                    {snapshot.missedBreakdown.map((entry) => (
+                      <div
+                        key={`${entry.hanzi}__${entry.pinyin}`}
+                        className="game-dialog__failed-item"
+                      >
+                        <div className="game-dialog__failed-hanzi">{entry.hanzi}</div>
+                        <div className="muted game-dialog__failed-pinyin">{entry.pinyin}</div>
+                        <div className="muted">{entry.count}x miss</div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="muted">Belum ada hanzi yang lolos.</div>
                 )}

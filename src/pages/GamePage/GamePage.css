@@ -194,6 +194,25 @@
   font-weight: 700;
 }
 
+.game-dialog__failed-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 10px;
+}
+
+.game-dialog__failed-item {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+}
+
+.game-dialog__failed-pinyin {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
 .game-dialog__stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
