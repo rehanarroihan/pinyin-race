@@ -74,9 +74,9 @@ export function createGameEngine({
   let arenaWidth = 900
   let arenaHeight = 420
   const boundaryX = 32
-  const entityWidth = 86
+  const entityWidth = 120
   const lanes = 5
-  const feedbackDurationMs = 280
+  const feedbackDurationMs = 500
   let missCounts = new Map<string, FailedEntry>()
 
   let snapshot: GameSnapshot = {
@@ -167,9 +167,15 @@ export function createGameEngine({
     }
 
     if (!snapshot.isGameOver) {
-      const moved = snapshot.items.map((it) =>
-        it.status === 'active' ? { ...it, x: it.x - it.speed * dt } : it,
-      )
+      const moved = snapshot.items.map((it) => {
+        if (it.status === 'matched') {
+          return { ...it, x: it.x - it.speed * dt }
+        }
+        if (it.status === 'active') {
+          return { ...it, x: it.x - it.speed * dt }
+        }
+        return it
+      })
       const survivors: GameEntity[] = []
       let hearts = snapshot.hearts
       let missed = snapshot.missed
@@ -177,14 +183,21 @@ export function createGameEngine({
       let missedBreakdown = snapshot.missedBreakdown
 
       for (const it of moved) {
-        if (it.status === 'matched' || it.status === 'missed') {
+        if (it.status === 'matched') {
+          if (it.x > -entityWidth) {
+            survivors.push(it)
+          }
+          continue
+        }
+
+        if (it.status === 'missed') {
           if ((it.removeAt ?? 0) > now) {
             survivors.push(it)
           }
           continue
         }
 
-        if (it.x <= boundaryX - entityWidth) {
+        if (it.x <= boundaryX) {
           const failed = trackMiss(it)
           onMiss?.(it)
           hearts = Math.max(0, hearts - 1)
@@ -193,7 +206,7 @@ export function createGameEngine({
           missedBreakdown = Array.from(missCounts.values()).sort((a, b) => b.count - a.count)
           survivors.push({
             ...it,
-            x: boundaryX - entityWidth,
+            x: boundaryX,
             status: 'missed',
             removeAt: now + feedbackDurationMs,
           })
@@ -318,7 +331,6 @@ export function createGameEngine({
         ? {
             ...it,
             status: 'matched' as const,
-            removeAt: now + feedbackDurationMs,
           }
         : it,
     )

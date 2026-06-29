@@ -401,6 +401,11 @@ export function GamePage() {
               <div className="game-entity__hanzi">
                 {it.status === 'matched' ? it.pinyinDisplay : it.hanzi}
               </div>
+              <div className="game-entity__label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
             </div>
           )
         })}
