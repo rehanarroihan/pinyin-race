@@ -1,6 +1,9 @@
 import { normalizePinyin } from '../../../lib/pinyin/normalize'
 import { INITIAL_GAME_HEARTS } from '../../../app/constants/game'
 import type { SetlistItem } from '../../setlists/types'
+import type { FailedEntry } from '../storage/historyStorage'
+
+export type { FailedEntry }
 
 type GameEntityStatus = 'active' | 'matched' | 'missed'
 
@@ -18,12 +21,6 @@ export type GameEntity = {
   removeAt?: number
 }
 
-export type FailedEntry = {
-  hanzi: string
-  pinyin: string
-  count: number
-}
-
 export type GameSnapshot = {
   score: number
   hearts: number
@@ -34,6 +31,7 @@ export type GameSnapshot = {
   correct: number
   mostFailed: FailedEntry | null
   missedBreakdown: FailedEntry[]
+  correctBreakdown: FailedEntry[]
   boundaryX: number
 }
 
@@ -78,6 +76,7 @@ export function createGameEngine({
   const lanes = 5
   const feedbackDurationMs = 500
   let missCounts = new Map<string, FailedEntry>()
+  let correctCounts = new Map<string, FailedEntry>()
 
   let snapshot: GameSnapshot = {
     score: 0,
@@ -89,11 +88,16 @@ export function createGameEngine({
     correct: 0,
     mostFailed: null,
     missedBreakdown: [],
+    correctBreakdown: [],
     boundaryX,
   }
 
   function emit() {
-    onSnapshot({ ...snapshot, items: snapshot.items.slice() })
+    onSnapshot({
+      ...snapshot,
+      items: snapshot.items.slice(),
+      correctBreakdown: Array.from(correctCounts.values()).sort((a, b) => b.count - a.count),
+    })
   }
 
   function measureArena() {
@@ -276,6 +280,7 @@ export function createGameEngine({
 
   function reset() {
     missCounts = new Map()
+    correctCounts = new Map()
     snapshot = {
       score: 0,
       hearts: INITIAL_GAME_HEARTS,
@@ -286,6 +291,7 @@ export function createGameEngine({
       correct: 0,
       mostFailed: null,
       missedBreakdown: [],
+      correctBreakdown: [],
       boundaryX,
     }
     emit()
@@ -324,7 +330,6 @@ export function createGameEngine({
     const matchedGroup = groups.get(bestHanzi) ?? []
     if (matchedGroup.length === 0) return false
 
-    const now = Date.now()
     const matchedIds = new Set(matchedGroup.map((it) => it.id))
     const nextItems = snapshot.items.map((it) =>
       matchedIds.has(it.id)
@@ -336,6 +341,16 @@ export function createGameEngine({
     )
 
     const groupSize = matchedGroup.length
+    for (const it of matchedGroup) {
+      const key = getMissKey(it)
+      const current = correctCounts.get(key)
+      correctCounts.set(
+        key,
+        current
+          ? { ...current, count: current.count + 1 }
+          : { hanzi: it.hanzi, pinyin: it.pinyinDisplay, count: 1 },
+      )
+    }
     snapshot = {
       ...snapshot,
       items: nextItems,

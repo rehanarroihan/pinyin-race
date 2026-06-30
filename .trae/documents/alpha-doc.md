@@ -50,7 +50,8 @@ Pinyin Race is a web application for practicing Mandarin pinyin typing through a
 - Auto-match input (no Enter key needed)
 - Group removal for duplicate hanzi
 - Homophone disambiguation (leftmost group wins)
-- Game history with missed item breakdown
+- Game history with per-entry correct/missed breakdown
+- Setlist stats (highest score, most success, most failed) from game history
 - Light/dark theme support
 - Audio: background music + SFX (correct, wrong, game over, game start)
 
@@ -119,7 +120,8 @@ src/
 │   │   ├── engine/
 │   │   │   └── gameEngine.ts            # createGameEngine() — core game logic
 │   │   └── storage/
-│   │       └── historyStorage.ts        # appendHistory(), loadHistory()
+│   │       ├── historyStorage.ts        # appendHistory(), loadHistory(), GameHistory, FailedEntry types
+│   │       └── historyStats.ts          # computeSetlistStats() — setlist performance analytics
 │   └── setlists/
 │       ├── types.ts                     # Setlist, SetlistItem, Recommendation
 │       ├── mappers.ts                   # toSetlistItem(), toRecommendation()
@@ -141,7 +143,7 @@ src/
 │   ├── SetlistsPage/
 │   │   └── SetlistsPage.tsx            # Setlist overview, create/delete
 │   ├── SetlistEditorPage/
-│   │   └── SetlistEditorPage.tsx        # Edit title, add/remove items, search
+│   │   └── SetlistEditorPage.tsx        # Edit title, add/remove items, search, stats section
 │   ├── GamePage/
 │   │   ├── GamePage.tsx                 # Game UI, audio, input, dialogs
 │   │   ├── GamePage.css                 # All game-related styles
@@ -446,7 +448,7 @@ tick(ts)
   │   ├── missed: keep if removeAt > now (fading), else remove
   │   └── active: if x <= boundaryX → mark as missed, decrement heart
   ├── Check game over (hearts === 0)
-  └── Emit snapshot → React setState
+  └── Emit snapshot → React setState (includes correctBreakdown from correctCounts)
 ```
 
 ### Difficulty Algorithm
@@ -504,8 +506,9 @@ function tryMatch(raw: string): boolean {
   4. If no groups → return false
   5. Find leftmost group: group with lowest minX entity
   6. Mark ALL entities in that group as 'matched'
-  7. score += groupSize, correct += groupSize
-  8. Return true → input field is cleared
+  7. Track each matched entity in correctCounts Map (for correctBreakdown)
+  8. score += groupSize, correct += groupSize
+  9. Return true → input field is cleared
 }
 ```
 
@@ -545,6 +548,12 @@ spawn → status: 'active'    → moves left at speed px/s
 | Entity matched | +1 per entity (group of N identical hanzi = +N) |
 | Entity missed | No score penalty (only loses 1 heart) |
 | Game over | Final score = total matched entities |
+
+**Breakdown tracking:**
+- `correctCounts` Map tracks every matched entity (key: `hanzi__pinyin`, value: `FailedEntry`)
+- `missCounts` Map tracks every missed entity (same format)
+- Both are emitted in the snapshot as `correctBreakdown` and `missedBreakdown` arrays (sorted by count desc)
+- On `reset()`, both Maps are cleared and snapshot fields reset to `[]`
 
 ---
 
@@ -626,11 +635,90 @@ When `hearts === 0`:
    - Score
    - Correct/missed counts
    - Missed breakdown grid (hanzi + pinyin + miss count per entry)
-4. History saved to localStorage via `appendHistory()`
+4. History saved to localStorage via `appendHistory()` with:
+   - `score`, `durationMs`, `setlistIds`
+   - `stats.missedBreakdown` — all missed entries from this game
+   - `stats.correctBreakdown` — all correct entries from this game
 
 **"Try again"** button:
 - Resets `didSaveRef`, calls `engine.reset()`, clears input, resets pause count
 - `engine.reset()` clears miss counts, re-initializes snapshot, calls `start()`
+
+### Game History & Stats
+
+**File:** [src/features/game/storage/historyStorage.ts](../../../src/features/game/storage/historyStorage.ts)
+
+```typescript
+type FailedEntry = {
+  hanzi: string
+  pinyin: string
+  count: number
+}
+
+type GameHistory = {
+  id: string
+  playedAt: number
+  setlistIds: string[]          // all setlist IDs used in the session
+  score: number
+  durationMs: number
+  stats: {
+    correct: number
+    missed: number
+    mostFailed?: FailedEntry | null
+    missedBreakdown?: FailedEntry[]    // all missed entries, sorted by count desc
+    correctBreakdown?: FailedEntry[]   // all correct entries, sorted by count desc
+  }
+}
+```
+
+- `appendHistory()` prepends the entry and caps at 50
+- `loadHistory()` returns the full array
+- `FailedEntry` is re-exported from `historyStorage.ts` and also exported via `gameEngine.ts`
+- `missedBreakdown` and `correctBreakdown` are optional for backward-compatibility with older history entries
+
+**Stats utility:** [src/features/game/storage/historyStats.ts](../../../src/features/game/storage/historyStats.ts)
+
+```typescript
+type SetlistStats = {
+  totalGames: number
+  soloBestScore: number | null        // highest score where setlistIds.length === 1
+  comboBestScore: number | null       // highest score where setlistIds.length > 1
+  overallBestScore: number | null     // highest score overall
+  soloGamesPlayed: number
+  comboGamesPlayed: number
+  comboPartners: { setlistId, title, gamesPlayed }[]
+  mostSuccess: EntryStat[]            // top entries by accuracy (correct / total)
+  mostFailed: EntryStat[]             // top entries by miss count
+}
+
+type EntryStat = {
+  hanzi: string
+  pinyin: string
+  correct: number
+  missed: number
+  accuracy: number                    // correct / (correct + missed) * 100
+  totalMisses: number                 // total misses across all games
+}
+
+function computeSetlistStats(history, setlistId, allSetlists): SetlistStats
+```
+
+**Algorithm:**
+1. Filter history → games where `setlistIds` includes target setlist
+2. Split into solo games (length === 1) and combo games (length > 1)
+3. Compute highest scores from each group
+4. Aggregate per-entry stats from `missedBreakdown` and `correctBreakdown` across all relevant games
+5. Compute combo partners from combo games (count co-occurrences with other setlist IDs)
+6. Sort most success by accuracy, most failed by miss count
+
+**Setlist Editor Stats UI:** [src/pages/SetlistEditorPage/SetlistEditorPage.tsx](../../../src/pages/SetlistEditorPage/SetlistEditorPage.tsx)
+
+The `StatsSection` component renders above the items list when `totalGames > 0`:
+- **Highest Score** card — shows overall best, with solo/combo breakdown
+- **Games Played** card — shows total, with solo/combo breakdown
+- **Combo partners** — lists setlists frequently played together
+- **Most success** — top 5 entries by accuracy percentage (accent-colored)
+- **Most failed** — top 5 entries by total miss count (danger-colored)
 
 ---
 
@@ -699,7 +787,7 @@ type AudioSettingsContextValue = {
 |---|---|---|
 | `/` | `HomePage` | Multi-select setlists, Play button |
 | `/setlists` | `SetlistsPage` | Setlist management overview |
-| `/setlists/:setlistId` | `SetlistEditorPage` | Edit setlist title, add/remove items |
+| `/setlists/:setlistId` | `SetlistEditorPage` | Edit setlist title, add/remove items, view stats |
 | `/game` | `GamePage` | Active game session |
 | `*` | `NotFoundPage` | 404 fallback |
 

@@ -2,16 +2,178 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/Button/Button'
 import { useSetlists } from '../../features/setlists/hooks/useSetlists'
+import { loadHistory } from '../../features/game/storage/historyStorage'
+import { computeSetlistStats, type SetlistStats } from '../../features/game/storage/historyStats'
+
+function StatsSection({ stats }: { stats: SetlistStats }) {
+  return (
+    <section className="panel stack">
+      <div style={{ fontWeight: 650 }}>Stats</div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 12,
+        }}
+      >
+        <div className="panel" style={{ padding: 14 }}>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 4 }}>
+            Highest Score
+          </div>
+          {stats.overallBestScore !== null ? (
+            <div style={{ fontSize: 28, fontWeight: 650, fontFamily: 'var(--font-mono)' }}>
+              {stats.overallBestScore}
+            </div>
+          ) : (
+            <div className="muted">—</div>
+          )}
+          <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+            {stats.soloBestScore !== null && `Solo: ${stats.soloBestScore}`}
+            {stats.soloBestScore !== null && stats.comboBestScore !== null && ' · '}
+            {stats.comboBestScore !== null && `Combo: ${stats.comboBestScore}`}
+          </div>
+        </div>
+
+        <div className="panel" style={{ padding: 14 }}>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 4 }}>
+            Games Played
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 650, fontFamily: 'var(--font-mono)' }}>
+            {stats.totalGames}
+          </div>
+          <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+            {stats.soloGamesPlayed > 0 && `${stats.soloGamesPlayed} solo`}
+            {stats.soloGamesPlayed > 0 && stats.comboGamesPlayed > 0 && ' · '}
+            {stats.comboGamesPlayed > 0 && `${stats.comboGamesPlayed} combo`}
+          </div>
+        </div>
+      </div>
+
+      {stats.comboPartners.length > 0 && (
+        <div className="muted" style={{ fontSize: 13 }}>
+          Combo partners:{' '}
+          {stats.comboPartners.map((p, i) => (
+            <span key={p.setlistId}>
+              {p.title} ({p.gamesPlayed}x)
+              {i < stats.comboPartners.length - 1 && ', '}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {stats.mostSuccess.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontWeight: 650 }}>Most success</div>
+            <div
+              style={{
+                fontSize: 13,
+                color: 'var(--accent)',
+                border: '1px solid var(--accent)',
+                borderRadius: 8,
+                padding: '2px 8px',
+              }}
+            >
+              Accuracy
+            </div>
+          </div>
+          <div className="stack">
+            {stats.mostSuccess.slice(0, 5).map((e) => (
+              <div
+                key={`${e.hanzi}__${e.pinyin}`}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: '1px solid var(--border)',
+                  background: 'color-mix(in srgb, var(--panel) 80%, transparent)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 650 }}>
+                    {e.hanzi} · <span style={{ fontFamily: 'var(--font-mono)' }}>{e.pinyin}</span>
+                  </div>
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    {e.correct} correct · {e.missed} missed
+                  </div>
+                </div>
+                <div style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 650 }}>
+                  {e.accuracy}%
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {stats.mostFailed.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontWeight: 650 }}>Most failed</div>
+            <div
+              style={{
+                fontSize: 13,
+                color: 'var(--danger)',
+                border: '1px solid var(--danger)',
+                borderRadius: 8,
+                padding: '2px 8px',
+              }}
+            >
+              Retry
+            </div>
+          </div>
+          <div className="stack">
+            {stats.mostFailed.slice(0, 5).map((e) => (
+              <div
+                key={`${e.hanzi}__${e.pinyin}`}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: '1px solid var(--border)',
+                  background: 'color-mix(in srgb, var(--panel) 80%, transparent)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 650 }}>
+                    {e.hanzi} · <span style={{ fontFamily: 'var(--font-mono)' }}>{e.pinyin}</span>
+                  </div>
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    {e.correct} correct · {e.missed} missed
+                  </div>
+                </div>
+                <div style={{ color: 'var(--danger)', fontFamily: 'var(--font-mono)', fontWeight: 650 }}>
+                  {e.missed} misses
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
 
 export function SetlistEditorPage() {
   const navigate = useNavigate()
   const { setlistId } = useParams<{ setlistId: string }>()
-  const { getSetlistById, updateSetlistTitle, removeItem, addItemFromRecommendation, search } =
+  const { getSetlistById, updateSetlistTitle, removeItem, addItemFromRecommendation, search, setlists } =
     useSetlists()
   const setlist = setlistId ? getSetlistById(setlistId) : null
 
   const [query, setQuery] = useState('')
   const recs = useMemo(() => (query ? search(query) : []), [query, search])
+
+  const [history] = useState(() => loadHistory())
+  const stats = useMemo(
+    () => (setlistId ? computeSetlistStats(history, setlistId, setlists) : null),
+    [history, setlistId, setlists],
+  )
 
   if (!setlist) {
     return (
@@ -54,6 +216,8 @@ export function SetlistEditorPage() {
           </Button>
         </div>
       </section>
+
+      {stats && stats.totalGames > 0 && <StatsSection stats={stats} />}
 
       {!setlist.builtIn && (
         <section className="panel stack">

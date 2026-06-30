@@ -1,5 +1,11 @@
 import { readLocalJson, writeLocalJson } from '../../../lib/storage/localJson'
 
+export type FailedEntry = {
+  hanzi: string
+  pinyin: string
+  count: number
+}
+
 export type GameHistory = {
   id: string
   playedAt: number
@@ -14,6 +20,8 @@ export type GameHistory = {
       pinyin: string
       count: number
     } | null
+    missedBreakdown?: FailedEntry[]
+    correctBreakdown?: FailedEntry[]
   }
 }
 

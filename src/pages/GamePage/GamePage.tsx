@@ -63,6 +63,7 @@ export function GamePage() {
     correct: 0,
     mostFailed: null,
     missedBreakdown: [],
+    correctBreakdown: [],
     boundaryX: 32,
   }))
   const [input, setInput] = useState('')
@@ -312,6 +313,8 @@ export function GamePage() {
         correct: snapshot.correct,
         missed: snapshot.missed,
         mostFailed: snapshot.mostFailed,
+        missedBreakdown: snapshot.missedBreakdown,
+        correctBreakdown: snapshot.correctBreakdown,
       },
     })
   }, [
